@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accessible Acoustics Spectrum - Harmonic vs Inharmonic</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        coursera: {
+                            blue: '#0056D2',
+                            dark: '#1F2432',
+                            light: '#F5F7FA',
+                            gray: '#525C68',
+                            border: '#D1D7E0',
+                            focus: '#FFB81C'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #F5F7FA;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Accessible Focus States */
+        button:focus-visible {
+            outline: 3px solid #0056D2;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 6px rgba(0, 86, 210, 0.2);
+            border-radius: 6px;
+        }
+
+        /* Toggle Button States */
+        .toggle-btn[aria-pressed="true"] {
+            background-color: #0056D2;
+            color: white;
+            border-color: #0056D2;
+        }
+        
+        .toggle-btn[aria-pressed="false"] {
+            background-color: white;
+            color: #525C68;
+            border-color: #D1D7E0;
+        }
+        
+        .toggle-btn[aria-pressed="false"]:hover {
+            background-color: #F5F7FA;
+            color: #1F2432;
+        }
+
+        /* Spectrum Bar Animations */
+        .spectrum-bar {
+            transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s;
+            width: 24px;
+            background-color: #9CA3AF; /* gray-400 */
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+            margin: 0 auto;
+        }
+
+        /* Styling for the currently selected peak */
+        .peak-btn[aria-pressed="true"] .spectrum-bar {
+            background-color: #0056D2;
+            box-shadow: 0 0 12px rgba(0, 86, 210, 0.5);
+        }
+
+        .peak-btn[aria-pressed="true"] .peak-label {
+            font-weight: 700;
+            color: #0056D2;
+            opacity: 1 !important;
+        }
+    </style>
+</head>
+<body class="text-coursera-dark">
+
+    <main class="max-w-4xl w-full bg-white rounded-xl shadow-md border border-coursera-border overflow-hidden">
+        
+        <header class="bg-coursera-light px-6 py-5 border-b border-coursera-border">
+            <h1 class="text-2xl font-bold text-coursera-dark m-0">Acoustics: Harmonic vs. Inharmonic Sounds</h1>
+            <p class="text-coursera-gray mt-2 text-sm leading-relaxed">
+                Compare the structured spectrum of a saxophone with the complex spectrum of a bell. 
+                Use the <kbd class="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">Tab</kbd> key to navigate and <kbd class="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">Enter</kbd> or <kbd class="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">Space</kbd> to interact.
+            </p>
+        </header>
+
+        <div class="p-6 md:p-8">
+            
+            <div class="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
+                <h2 class="text-lg font-semibold text-coursera-dark" id="instrument-toggle-label">Select Instrument:</h2>
+                
+                <div role="group" aria-labelledby="instrument-toggle-label" class="flex gap-2 p-1 bg-gray-100 rounded-lg border border-gray-200">
+                    <button 
+                        id="toggle-sax" 
+                        class="toggle-btn px-4 py-2 rounded-md font-medium text-sm border transition-colors duration-200"
+                        aria-pressed="true"
+                        onclick="switchMode('sax')">
+                        🎷 Saxophone (Harmonic)
+                    </button>
+                    <button 
+                        id="toggle-bell" 
+                        class="toggle-btn px-4 py-2 rounded-md font-medium text-sm border transition-colors duration-200"
+                        aria-pressed="false"
+                        onclick="switchMode('bell')">
+                        🔔 Bell (Inharmonic)
+                    </button>
+                </div>
+            </div>
+
+            <div role="group" aria-label="Frequency Spectrum Chart" class="relative w-full h-64 border-l-2 border-b-2 border-gray-300 mb-10 mt-4" id="chart-container">
+                
+                <!-- Y-Axis Label -->
+                <div class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm font-semibold text-coursera-gray tracking-wider" aria-hidden="true">
+                    Intensity
+                </div>
+
+                <!-- Decorative Grid Lines -->
+                <div class="absolute w-full h-px bg-gray-100 top-1/4" aria-hidden="true"></div>
+                <div class="absolute w-full h-px bg-gray-100 top-2/4" aria-hidden="true"></div>
+                <div class="absolute w-full h-px bg-gray-100 top-3/4" aria-hidden="true"></div>
+                
+                <!-- X-Axis Indicators -->
+                <div class="absolute -bottom-6 left-0 text-xs text-gray-500 font-medium" aria-hidden="true">0 Hz</div>
+                <div class="absolute -bottom-6 right-0 text-xs text-gray-500 font-medium" aria-hidden="true">2500 Hz</div>
+                <div class="absolute -bottom-10 w-full text-center text-sm font-semibold text-coursera-gray tracking-wider" aria-hidden="true">
+                    Frequency (Hz)
+                </div>
+
+                <!-- Dynamic Bars Container -->
+                <div id="peaks-container" class="absolute w-full h-full bottom-0 left-0"></div>
+            </div>
+
+            <div id="info-panel" aria-live="polite" aria-atomic="true" class="bg-coursera-light p-6 rounded-lg border border-coursera-border min-h-[140px] flex flex-col justify-center transition-all duration-300">
+                <div id="default-state" class="text-center text-coursera-gray">
+                    <p class="text-lg m-0">Select a frequency bar in the chart to reveal its acoustic properties.</p>
+                </div>
+                
+                <div id="active-state" class="hidden">
+                    <div class="flex items-baseline flex-wrap gap-3 mb-2">
+                        <h3 id="term-title" class="text-xl font-bold text-coursera-blue m-0"></h3>
+                        <span id="term-freq" class="text-sm font-semibold px-2 py-1 bg-blue-100 text-blue-800 rounded"></span>
+                    </div>
+                    <p id="term-definition" class="text-coursera-dark leading-relaxed m-0 text-base"></p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const MAX_FREQ = 2200; // X-axis limit for percentage calculations
+        
+        // Data for Saxophone (Harmonic: multiples of 494)
+        const saxData = [
+            {
+                id: "sax-1",
+                term: "Fundamental (1f)",
+                frequency: 494,
+                amplitude: 100,
+                definition: "The lowest harmonic frequency. In a saxophone, this fundamental frequency establishes the perceived pitch (B4) you hear."
+            },
+            {
+                id: "sax-2",
+                term: "2nd Harmonic (2f)",
+                frequency: 988,
+                amplitude: 80,
+                definition: "Exactly twice the fundamental frequency (494 x 2). Wind instruments like the sax produce a rich, predictable series of these integer multiples."
+            },
+            {
+                id: "sax-3",
+                term: "3rd Harmonic (3f)",
+                frequency: 1482,
+                amplitude: 60,
+                definition: "Exactly three times the fundamental (494 x 3). The consistent spacing of these harmonics gives the saxophone its warm, bright, and pitched timbre."
+            },
+            {
+                id: "sax-4",
+                term: "4th Harmonic (4f)",
+                frequency: 1976,
+                amplitude: 45,
+                definition: "Exactly four times the fundamental (494 x 4). As we move higher, harmonics typically decrease in intensity, shaping the envelope and tone color."
+            }
+        ];
+
+        // Data for Bell (Inharmonic: irregular multiples)
+        const bellData = [
+            {
+                id: "bell-1",
+                term: "Fundamental / Strike Note",
+                frequency: 494,
+                amplitude: 100,
+                definition: "The initial fundamental pitch produced when the metal is struck. Unlike a sax, the frequencies that follow it will not be tidy multiples."
+            },
+            {
+                id: "bell-2",
+                term: "Inharmonic Partial (~1.4f)",
+                frequency: 691,
+                amplitude: 75,
+                definition: "An irregular overtone. Notice how 691 is NOT a clean multiple of 494. This irregular math is what creates a metallic, dissonant clank rather than a smooth musical note."
+            },
+            {
+                id: "bell-3",
+                term: "Inharmonic Partial (~2.2f)",
+                frequency: 1086,
+                amplitude: 85,
+                definition: "Another irregular partial. In heavy rigid structures like church bells, overtones clash with each other, creating complex, pulsating beats."
+            },
+            {
+                id: "bell-4",
+                term: "Inharmonic Partial (~3.1f)",
+                frequency: 1531,
+                amplitude: 60,
+                definition: "The irregular spacing of these partials makes the ear perceive the sound as 'unpitched' or metallic compared to a wind or string instrument."
+            }
+        ];
+
+        let currentMode = 'sax';
+        const peaksContainer = document.getElementById('peaks-container');
+        
+        function switchMode(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+            
+            // Update toggle buttons ARIA state
+            document.getElementById('toggle-sax').setAttribute('aria-pressed', mode === 'sax');
+            document.getElementById('toggle-bell').setAttribute('aria-pressed', mode === 'bell');
+            
+            // Announce change to screen readers via a temporary hidden alert or rely on UI feedback
+            const srAnnouncement = document.createElement('div');
+            srAnnouncement.setAttribute('role', 'status');
+            srAnnouncement.setAttribute('aria-live', 'polite');
+            srAnnouncement.className = 'sr-only';
+            srAnnouncement.innerText = `Switched to ${mode === 'sax' ? 'Saxophone' : 'Bell'} spectrum.`;
+            document.body.appendChild(srAnnouncement);
+            setTimeout(() => srAnnouncement.remove(), 1000);
+
+            // Reset Info Panel
+            document.getElementById('default-state').classList.remove('hidden');
+            document.getElementById('active-state').classList.add('hidden');
+            
+            renderChart();
+        }
+
+        function renderChart() {
+            // Clear existing peaks
+            peaksContainer.innerHTML = '';
+            
+            const dataToRender = currentMode === 'sax' ? saxData : bellData;
+
+            dataToRender.forEach((peak) => {
+                const leftPercentage = (peak.frequency / MAX_FREQ) * 100;
+                
+                // Accessible Button for each bar
+                const button = document.createElement('button');
+                button.id = peak.id;
+                button.className = 'peak-btn absolute bottom-0 flex flex-col justify-end items-center group cursor-pointer border-none bg-transparent h-full z-10';
+                button.style.left = `calc(${leftPercentage}% - 24px)`;
+                button.style.width = '48px'; 
+                
+                button.setAttribute('aria-label', `View details for ${peak.term}, ${peak.frequency} Hertz`);
+                button.setAttribute('aria-pressed', 'false');
+
+                // Visual Bar
+                const bar = document.createElement('div');
+                bar.className = 'spectrum-bar';
+                bar.style.height = '0%'; // Start at 0 for animation
+                
+                // Visual Label (Hidden by default, shown on focus/hover)
+                const visualLabel = document.createElement('div');
+                visualLabel.className = 'peak-label text-xs mb-2 text-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity absolute -top-8 whitespace-nowrap bg-white px-2 py-0.5 rounded shadow border border-gray-200 pointer-events-none';
+                visualLabel.setAttribute('aria-hidden', 'true');
+                visualLabel.innerText = `${peak.frequency} Hz`;
+
+                button.appendChild(visualLabel);
+                button.appendChild(bar);
+
+                button.addEventListener('click', () => selectPeak(peak, button));
+                
+                peaksContainer.appendChild(button);
+
+                // Trigger CSS height animation
+                setTimeout(() => {
+                    bar.style.height = `${peak.amplitude}%`;
+                }, 50);
+            });
+        }
+
+        function selectPeak(selectedPeak, selectedButton) {
+            // Reset pressed state on all bars
+            document.querySelectorAll('.peak-btn').forEach(btn => {
+                btn.setAttribute('aria-pressed', 'false');
+            });
+
+            // Activate current bar
+            selectedButton.setAttribute('aria-pressed', 'true');
+
+            // Toggle Info Panel views
+            document.getElementById('default-state').classList.add('hidden');
+            document.getElementById('active-state').classList.remove('hidden');
+
+            // Populate Info - Screen readers will automatically announce this
+            document.getElementById('term-title').innerText = selectedPeak.term;
+            document.getElementById('term-freq').innerText = `${selectedPeak.frequency} Hz`;
+            document.getElementById('term-definition').innerText = selectedPeak.definition;
+        }
+
+        // Add tailwind class for Screen Reader Only text (used in announcements)
+        const style = document.createElement('style');
+        style.textContent = `
+            .sr-only {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border-width: 0;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize on load
+        window.onload = renderChart;
+    </script>
+</body>
+</html>
